@@ -1,78 +1,73 @@
 # import paddle
+from dataclasses import dataclass
+from pathlib import Path
+
 import spacy
 from paddleocr import PaddleOCR
 
 # paddle.utils.run_check()
 
-# Initialize the OCR engine
-ocr = PaddleOCR(use_angle_cls=True, use_gpu=False, lang="en", show_log=False)
 
-# Perform OCR on an image
-result = ocr.ocr("/Users/dstoker/Downloads/business_card_1.png")
-
-# Print the results
-texts = []
-for line in result:
-    for text in line:
-        print(text[1])
-        texts.append(text[1][0])
+@dataclass
+class Entity:
+    person: str
+    company: str
 
 
-def recognize_address(text: str):
-    # Load a spaCy model
-    nlp = spacy.load("en_core_web_sm")
+def main():
+    # Initialize the OCR engine
+    ocr = PaddleOCR(use_angle_cls=True, use_gpu=False, lang="en", show_log=False)
+    nlp = spacy.load("en_core_web_trf")
 
-    # Text to process
-    text = "I live at 123 Main Street, New York, NY 10001."
+    def extract_text_from_image(image_path: Path) -> str:
+        # Perform OCR on an image
+        result = ocr.ocr(image_path)
 
-    # Process the text
-    doc = nlp(text)
+        # Aggregate the discovered text
+        texts = []
+        for line in result:
+            for text in line:
+                # print(text[1])
+                texts.append(text[1][0])
 
-    # Extract address components
-    address_components = []
-    for ent in doc.ents:
-        if ent.label_ in ["GPE", "LOC"]:  # Geopolitical Entity or Location
-            address_components.append(ent.text)
+        return ", ".join(texts)
 
-    # Join the components to form the address
-    address = " ".join(address_components)
+    def recognize_person(text: str) -> str | None:
+        # Process the text
+        doc = nlp(text)
 
-    print(address)
+        # Extract address components
+        people_components = []
+        for ent in doc.ents:
+            if ent.label_ == "PERSON":
+                people_components.append(ent.text)
+        person = " ".join(people_components)
+        return None if not person else person
+
+    def recognize_organization(text: str) -> str | None:
+        # Process the text
+        doc = nlp(text)
+
+        # Extract address components
+        org_components = []
+        for ent in doc.ents:
+            if ent.label_ == "ORG":
+                org_components.append(ent.text)
+        org = " ".join(org_components)
+        return None if not org else org
+
+    for index in range(5):
+        text = extract_text_from_image(
+            f"/Users/dstoker/Downloads/business_card_{index}.png"
+        )
+        person = recognize_person(text)
+        org = recognize_organization(text)
+        if person and org:
+            entity = Entity(person, org)
+            print(f"PERSON: {entity.person}")
+            print(f"ORG: {entity.company}")
+            print()
 
 
-recognize_address(" ".join(texts))
-
-# import os
-
-# import cv2
-# from matplotlib import pyplot as plt
-# from paddleocr import PaddleOCR, draw_ocr
-
-# # Initialize the OCR model
-# ocr_model = PaddleOCR(
-#     lang="en", use_gpu=False
-# )  # You can enable GPU by setting use_gpu=True
-
-# # Specify the path to the image you want to perform OCR on
-# img_path = "/Users/dstoker/Downloads/business_card_0.png"
-
-# # Perform OCR on the image
-# result = ocr_model.ocr(img_path)
-
-# # Get the detected boxes, texts, and scores
-# boxes = result[0][0][0]
-# text, score = result[0][0][1]
-
-# # Path to the font file for visualization
-# font_path = os.path.join("PaddleOCR", "doc", "fonts", "latin.ttf")
-
-# # Load the image using OpenCV and reorder the color channels
-# img = cv2.imread(img_path)
-# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
-# # Visualize the image with detected text
-# plt.figure(figsize=(15, 15))
-# annotated = draw_ocr(img, boxes, texts, scores, font_path=font_path)
-# plt.imshow(annotated)
-# plt.axis("off")  # Turn off axis labels
-# plt.show()
+if __name__ == "__main__":
+    main()

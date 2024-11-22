@@ -13,4 +13,4 @@ dependencies = [
 ]
 
 # uv pip install paddlepaddle==0.0.0 -f https://www.paddlepaddle.org.cn/whl/mac/cpu/develop.html
-# uv run spacy download en_core_web_sm
+# uv run spacy download en_core_web_trf
