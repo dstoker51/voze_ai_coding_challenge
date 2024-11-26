@@ -1,42 +1,33 @@
-# import paddle
 from dataclasses import dataclass
 from pathlib import Path
 
 import spacy
 from paddleocr import PaddleOCR
 
+# import paddle
 # paddle.utils.run_check()
 
 
 @dataclass
-class Entity:
-    person: str
-    company: str
+class BusinessCard:
+    raw_text: str
+    person: str | None = None
+    company: str | None = None
+    city: str | None = None
+    state: str | None = None
+    country: str | None = None
 
 
-def main():
-    # Initialize the OCR engine
-    ocr = PaddleOCR(use_angle_cls=True, use_gpu=False, lang="en", show_log=False)
-    nlp = spacy.load("en_core_web_trf")
+@dataclass
+class BusinessCardProcessor:
+    ocr: PaddleOCR
+    nlp: spacy
 
-    def extract_text_from_image(image_path: Path) -> str:
-        # Perform OCR on an image
-        result = ocr.ocr(image_path)
-
-        # Aggregate the discovered text
-        texts = []
-        for line in result:
-            for text in line:
-                # print(text[1])
-                texts.append(text[1][0])
-
-        return ", ".join(texts)
-
-    def recognize_person(text: str) -> str | None:
+    def recognize_person(self, text: str) -> str | None:
         # Process the text
-        doc = nlp(text)
+        doc = self.nlp(text)
 
-        # Extract address components
+        # Extract PERSON components
         people_components = []
         for ent in doc.ents:
             if ent.label_ == "PERSON":
@@ -44,11 +35,11 @@ def main():
         person = " ".join(people_components)
         return None if not person else person
 
-    def recognize_organization(text: str) -> str | None:
+    def recognize_organization(self, text: str) -> str | None:
         # Process the text
-        doc = nlp(text)
+        doc = self.nlp(text)
 
-        # Extract address components
+        # Extract ORG components
         org_components = []
         for ent in doc.ents:
             if ent.label_ == "ORG":
@@ -56,17 +47,49 @@ def main():
         org = " ".join(org_components)
         return None if not org else org
 
-    for index in range(5):
-        text = extract_text_from_image(
-            f"/Users/dstoker/Downloads/business_card_{index}.png"
+    def extract_text_from_image(self, image_path: Path) -> str | None:
+        # Perform OCR on an image
+        result = self.ocr.ocr(image_path)
+
+        # Aggregate the discovered text
+        texts = []
+        for line in result:
+            for text in line:
+                texts.append(text[1][0])
+
+        if len(texts) == 0:
+            return None
+        return ", ".join(texts)
+
+    def process(self, image_path: Path | str) -> BusinessCard:
+        extracted_text = self.extract_text_from_image(str(image_path))
+        card = BusinessCard(
+            raw_text=extracted_text if extracted_text is not None else ""
         )
-        person = recognize_person(text)
-        org = recognize_organization(text)
-        if person and org:
-            entity = Entity(person, org)
-            print(f"PERSON: {entity.person}")
-            print(f"ORG: {entity.company}")
-            print()
+
+        if self.recognize_organization(card.raw_text) != []:
+            card.company = self.recognize_organization(card.raw_text)
+        if self.recognize_person(card.raw_text) != []:
+            card.person = self.recognize_person(card.raw_text)
+        return card
+
+
+def main():
+    # Initialize the processor
+    processor = BusinessCardProcessor(
+        ocr=PaddleOCR(use_angle_cls=True, use_gpu=False, lang="en", show_log=False),
+        nlp=spacy.load("en_core_web_trf"),
+    )
+
+    for index in range(5):
+        card = processor.process(
+            Path(f"/Users/dstoker/Downloads/business_card_{index}.png")
+        )
+        print(f"PERSON: {card.person}")
+        print(f"ORG: {card.company}")
+        print()
+
+        # Best effort
 
 
 if __name__ == "__main__":
