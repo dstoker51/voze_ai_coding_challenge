@@ -1,3 +1,4 @@
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,7 @@ class BusinessCard:
     city: str | None = None
     state: str | None = None
     country: str | None = None
+    zip: str | None = None
 
 
 # class BusinessCard(TypedDict):
@@ -70,7 +72,29 @@ class BusinessCardProcessor:
 
         # Extract location information
         # TODO: More than this
-        card.city = " ".join(discovered_entities["GPE"])
+        # location_entities = discovered_entities["GPE"]
+        # states = list(
+        #     set(location_entities).intersection(set(abbreviation_to_name.keys()))
+        # )
+        # if len(states) > 0:
+        #     card.state = states[0]
+
+        # Zip code
+        zip_code_pattern = "[0-9]{5}(?:-[0-9]{4})?"
+        # TODO: Find a regex pattern that is resistant to other characters instead of
+        #       manually filtering first
+        zips = re.findall(
+            zip_code_pattern,
+            " ".join(
+                [
+                    "".join([val for val in i if val.isalnum() or val in ["-", "."]])
+                    for i in extracted_text.split()
+                ]
+            ),
+        )
+        # If multiple zips are found snag the first one
+        if len(zips) > 0:
+            card.zip = zips[0]
 
         return card
 
@@ -93,8 +117,11 @@ def main():
         print(f"City: {card.city}")
         print(f"State: {card.state}")
         print(f"Country: {card.country}")
+        print(f"Zip: {card.zip}")
         print()
         print()
+
+        # print(card)
 
         # Best effort
 
