@@ -1,3 +1,4 @@
+from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,34 +19,19 @@ class BusinessCard:
     country: str | None = None
 
 
+# class BusinessCard(TypedDict):
+#     raw_text: str
+#     person: str
+#     company: str
+#     city: str
+#     state: str
+#     country: str
+
+
 @dataclass
 class BusinessCardProcessor:
     ocr: PaddleOCR
     nlp: spacy
-
-    def recognize_person(self, text: str) -> str | None:
-        # Process the text
-        doc = self.nlp(text)
-
-        # Extract PERSON components
-        people_components = []
-        for ent in doc.ents:
-            if ent.label_ == "PERSON":
-                people_components.append(ent.text)
-        person = " ".join(people_components)
-        return None if not person else person
-
-    def recognize_organization(self, text: str) -> str | None:
-        # Process the text
-        doc = self.nlp(text)
-
-        # Extract ORG components
-        org_components = []
-        for ent in doc.ents:
-            if ent.label_ == "ORG":
-                org_components.append(ent.text)
-        org = " ".join(org_components)
-        return None if not org else org
 
     def extract_text_from_image(self, image_path: Path) -> str | None:
         # Perform OCR on an image
@@ -61,16 +47,31 @@ class BusinessCardProcessor:
             return None
         return ", ".join(texts)
 
+    def parse(self, text: str, entity_types: list[str]) -> dict:
+        # Process the text
+        doc = self.nlp(text)
+
+        # Extract components
+        data = defaultdict(list)
+        for ent in doc.ents:
+            if ent.label_ in entity_types:
+                data[ent.label_].append(ent.text)
+
+        return data
+
     def process(self, image_path: Path | str) -> BusinessCard:
         extracted_text = self.extract_text_from_image(str(image_path))
+        discovered_entities = self.parse(extracted_text, ["ORG", "PERSON", "GPE"])
         card = BusinessCard(
-            raw_text=extracted_text if extracted_text is not None else ""
+            raw_text=extracted_text if extracted_text is not None else "",
+            company=" ".join(discovered_entities["ORG"]),
+            person=" ".join(discovered_entities["PERSON"]),
         )
 
-        if self.recognize_organization(card.raw_text) != []:
-            card.company = self.recognize_organization(card.raw_text)
-        if self.recognize_person(card.raw_text) != []:
-            card.person = self.recognize_person(card.raw_text)
+        # Extract location information
+        # TODO: More than this
+        card.city = " ".join(discovered_entities["GPE"])
+
         return card
 
 
@@ -85,8 +86,14 @@ def main():
         card = processor.process(
             Path(f"/Users/dstoker/Downloads/business_card_{index}.png")
         )
-        print(f"PERSON: {card.person}")
-        print(f"ORG: {card.company}")
+        print(card.raw_text)
+        print()
+        print(f"Name: {card.person}")
+        print(f"Company: {card.company}")
+        print(f"City: {card.city}")
+        print(f"State: {card.state}")
+        print(f"Country: {card.country}")
+        print()
         print()
 
         # Best effort
