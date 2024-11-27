@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 
+import mysql.connector
 import spacy
 import typer
 from paddleocr import PaddleOCR
@@ -138,7 +139,25 @@ def process_card(image_path: Path):
         card.zip = typer.prompt("Zip Code?", card.zip)
         card.info()
 
-    # Upsert DB entry
+    # Connect to DB
+    mydb = mysql.connector.connect(
+        host="sql3.freesqldatabase.com",
+        user="sql3743596",
+        password="rwP5Nr2azB",
+        database="sql3743596",
+    )
+    # print(mydb)
+
+    mycursor = mydb.cursor()
+
+    sql = "SELECT * FROM Contacts WHERE FirstName ='Sarah'"
+
+    mycursor.execute(sql)
+
+    myresult = mycursor.fetchall()
+
+    for x in myresult:
+        print(x)
 
 
 if __name__ == "__main__":
