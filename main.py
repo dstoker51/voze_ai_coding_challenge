@@ -27,6 +27,15 @@ class BusinessCard:
             and self.zip is not None
         )
 
+    def print(self):
+        print(self.raw_text)
+        print()
+        print(f"Name: {self.person}")
+        print(f"Company: {self.company}")
+        print(f"Zip: {self.zip}")
+        print()
+        print()
+
 
 @dataclass
 class BusinessCardProcessor:
@@ -105,13 +114,15 @@ def process_card(image_path: Path):
     )
 
     card = processor.process(image_path)
-    print(card.raw_text)
-    print()
-    print(f"Name: {card.person}")
-    print(f"Company: {card.company}")
-    print(f"Zip: {card.zip}")
-    print()
-    print()
+
+    # Prompt user to correct info as needed
+    if not typer.confirm("Does the information look correct?"):
+        card.person = typer.prompt("Name?", card.person)
+        card.company = typer.prompt("Company?", card.company)
+        card.zip = typer.prompt("Zip Code?", card.zip)
+        card.print()
+
+    # Upsert DB entry
 
 
 if __name__ == "__main__":
