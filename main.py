@@ -1,3 +1,4 @@
+import os
 import re
 from collections import defaultdict
 from dataclasses import dataclass
@@ -6,6 +7,8 @@ from pathlib import Path
 import spacy
 import typer
 from paddleocr import PaddleOCR
+
+SPACY_MODEL = "en_core_web_trf"
 
 # import paddle
 # paddle.utils.run_check()
@@ -27,7 +30,7 @@ class BusinessCard:
             and self.zip is not None
         )
 
-    def print(self):
+    def info(self):
         print(self.raw_text)
         print()
         print(f"Name: {self.person}")
@@ -106,21 +109,34 @@ class BusinessCardProcessor:
         return card
 
 
+def load_spacy_model(model: str):
+    model_path = os.path.join("./models/spacy", model)
+    try:
+        nlp = spacy.load(model_path)
+    except OSError:
+        print(f"{model} not found at {model_path}. Downloading...")
+        spacy.cli.download(model)
+        nlp = spacy.load(model)
+        nlp.to_disk(model_path)
+    return nlp
+
+
 @app.command()
 def process_card(image_path: Path):
     processor = BusinessCardProcessor(
         ocr=PaddleOCR(use_angle_cls=True, use_gpu=False, lang="en", show_log=False),
-        nlp=spacy.load("en_core_web_trf"),
+        nlp=load_spacy_model(SPACY_MODEL),
     )
 
     card = processor.process(image_path)
 
     # Prompt user to correct info as needed
-    if not typer.confirm("Does the information look correct?"):
+    card.info()
+    if not typer.confirm("Does the information look correct?", default=True):
         card.person = typer.prompt("Name?", card.person)
         card.company = typer.prompt("Company?", card.company)
         card.zip = typer.prompt("Zip Code?", card.zip)
-        card.print()
+        card.info()
 
     # Upsert DB entry
 
