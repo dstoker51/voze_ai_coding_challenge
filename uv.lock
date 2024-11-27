@@ -106,6 +106,7 @@ dependencies = [
     { name = "pip" },
     { name = "setuptools" },
     { name = "spacy", extra = ["apple"] },
+    { name = "typer" },
     { name = "wheel" },
 ]
 
@@ -115,6 +116,7 @@ requires-dist = [
     { name = "pip", specifier = ">=24.3.1" },
     { name = "setuptools", specifier = ">=75.6.0" },
     { name = "spacy", extras = ["apple"], specifier = ">=3.7.5" },
+    { name = "typer", specifier = ">=0.13.1" },
     { name = "wheel", specifier = ">=0.45.0" },
 ]
 

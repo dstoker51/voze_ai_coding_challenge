@@ -4,10 +4,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import spacy
+import typer
 from paddleocr import PaddleOCR
 
 # import paddle
 # paddle.utils.run_check()
+
+app = typer.Typer()
 
 
 @dataclass
@@ -15,19 +18,14 @@ class BusinessCard:
     raw_text: str
     person: str | None = None
     company: str | None = None
-    city: str | None = None
-    state: str | None = None
-    country: str | None = None
     zip: str | None = None
 
-
-# class BusinessCard(TypedDict):
-#     raw_text: str
-#     person: str
-#     company: str
-#     city: str
-#     state: str
-#     country: str
+    def valid(self):
+        return (
+            self.person is not None
+            and self.company is not None
+            and self.zip is not None
+        )
 
 
 @dataclass
@@ -70,7 +68,7 @@ class BusinessCardProcessor:
             person=" ".join(discovered_entities["PERSON"]),
         )
 
-        # Extract location information
+        # State
         # TODO: More than this
         # location_entities = discovered_entities["GPE"]
         # states = list(
@@ -99,32 +97,22 @@ class BusinessCardProcessor:
         return card
 
 
-def main():
-    # Initialize the processor
+@app.command()
+def process_card(image_path: Path):
     processor = BusinessCardProcessor(
         ocr=PaddleOCR(use_angle_cls=True, use_gpu=False, lang="en", show_log=False),
         nlp=spacy.load("en_core_web_trf"),
     )
 
-    for index in range(5):
-        card = processor.process(
-            Path(f"/Users/dstoker/Downloads/business_card_{index}.png")
-        )
-        print(card.raw_text)
-        print()
-        print(f"Name: {card.person}")
-        print(f"Company: {card.company}")
-        print(f"City: {card.city}")
-        print(f"State: {card.state}")
-        print(f"Country: {card.country}")
-        print(f"Zip: {card.zip}")
-        print()
-        print()
-
-        # print(card)
-
-        # Best effort
+    card = processor.process(image_path)
+    print(card.raw_text)
+    print()
+    print(f"Name: {card.person}")
+    print(f"Company: {card.company}")
+    print(f"Zip: {card.zip}")
+    print()
+    print()
 
 
 if __name__ == "__main__":
-    main()
+    app()
